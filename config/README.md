@@ -1,16 +1,43 @@
-# Configuration Files
+# Configuration Management
 
-            System-wide configuration files.
+## Overview
+Configuration management scripts and tools for managing different deployment environments.
 
-            ## Contents
-            - config-base.sh: Base configuration
-              - Common settings
-              - Default values
-              - Shared parameters
-            - config-dev.sh: Development settings
-              - Development-specific parameters
-              - Testing configurations
-            - config-prod.sh: Production settings
-              - Production-specific parameters
-              - Security configurations
-              - Performance settings
+## Features
+- Environment-specific configurations
+- Development environment setup
+- Production environment setup
+- Base configuration templates
+- Configuration validation tools
+
+## Configuration
+1. Initialize configuration:
+   ```bash
+   ./config-base.sh --init
+   ```
+
+2. Set environment:
+   ```bash
+   ./config-base.sh --set-env development
+   ```
+
+3. Validate configuration:
+   ```bash
+   ./config-base.sh --validate
+   ```
+
+## Usage
+1. Setup development environment:
+   ```bash
+   ./config-dev.sh --setup
+   ```
+
+2. Setup production environment:
+   ```bash
+   ./config-prod.sh --setup
+   ```
+
+3. Update configurations:
+   ```bash
+   ./config-base.sh --update
+   ```

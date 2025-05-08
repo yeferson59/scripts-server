@@ -1,14 +1,38 @@
 # Security Scripts
 
-This directory contains security-related scripts and documentation for server hardening.
+## Overview
+A comprehensive collection of security scripts and tools for server hardening, monitoring, and incident response.
 
-## Documentation
+## Features
+- Automated security hardening scripts
+- Real-time monitoring and alerting
+- Incident response automation
+- Firewall management tools
+- Security audit capabilities
+- Log analysis utilities
 
-- [Server Security Guide](docs/SERVER_SECURITY.md)
-- [Firewall Configuration](docs/FIREWALL_CONFIG.md)
-- [Implementation Guide](docs/IMPLEMENTATION_GUIDE.md)
+## Configuration
+1. Install required dependencies:
+   ```bash
+   ./install.sh --security-tools
+   ```
 
-## Scripts
+2. Configure security settings:
+   ```bash
+   ./core/secure-server.sh --configure
+   ```
+
+3. Set up monitoring:
+   ```bash
+   ./core/security-monitor.sh --setup
+   ```
+
+## Usage
+Follow these guides for detailed implementation:
+
+1. [Server Security Guide](./docs/SERVER_SECURITY.md)
+2. [Firewall Configuration](./docs/FIREWALL_CONFIG.md)
+3. [Implementation Guide](./docs/IMPLEMENTATION_GUIDE.md)
 
 ### Core Security
 - `core/security-audit.sh`: Performs security audits
