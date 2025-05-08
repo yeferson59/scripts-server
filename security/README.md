@@ -30,9 +30,9 @@ A comprehensive collection of security scripts and tools for server hardening, m
 ## Usage
 Follow these guides for detailed implementation:
 
-1. [Server Security Guide](./docs/SERVER_SECURITY.md)
-2. [Firewall Configuration](./docs/FIREWALL_CONFIG.md)
-3. [Implementation Guide](./docs/IMPLEMENTATION_GUIDE.md)
+1. [Server Security Guide](docs/SERVER_SECURITY.md)
+2. [Firewall Configuration](docs/FIREWALL_CONFIG.md)
+3. [Implementation Guide](docs/IMPLEMENTATION_GUIDE.md)
 
 ### Core Security
 - `core/security-audit.sh`: Performs security audits

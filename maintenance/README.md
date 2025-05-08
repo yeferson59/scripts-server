@@ -1,60 +1,49 @@
-# 🔧 System Maintenance
+# System Maintenance
 
 ## Overview
-Automated system maintenance and cleanup procedures.
+System maintenance scripts for keeping the server clean, optimized, and up-to-date.
 
 ## Features
+- Automated cleanup tasks
 - Log rotation
-- Temporary file cleanup
-- Package management
 - System updates
 - Performance optimization
-
-## Scripts
-- `cleanup-system.sh`: System cleanup and optimization
-  - Log cleanup
-  - Package cache cleanup
-  - Temporary file removal
-  - Docker cleanup
-
-## Schedule
-```bash
-# Daily cleanup at 3 AM
-0 3 * * * /path/to/cleanup-system.sh
-
-# Weekly full maintenance
-0 4 * * 0 /path/to/cleanup-system.sh --full
-```
+- Disk space management
+- Service maintenance
 
 ## Configuration
-```bash
-# Cleanup settings
-LOG_RETENTION_DAYS=7
-DOCKER_PRUNE_ENABLED=true
-TEMP_FILE_AGE=7
-```
+1. Set maintenance schedule:
+   ```bash
+   ./cleanup-system.sh --configure-schedule
+   ```
 
-## Maintenance Tasks
-1. System Updates
-   - Package updates
-   - Security patches
-   - System upgrades
+2. Configure cleanup rules:
+   ```bash
+   ./cleanup-system.sh --set-rules
+   ```
 
-2. Cleanup Operations
-   - Log rotation
-   - Cache clearing
-   - Temporary files
-   - Old backups
+3. Set retention policies:
+   ```bash
+   ./cleanup-system.sh --set-retention
+   ```
 
-3. Optimization
-   - Database optimization
-   - File system check
-   - Service optimization
+## Usage
+1. Run manual cleanup:
+   ```bash
+   ./cleanup-system.sh --manual
+   ```
 
-## Monitoring
-- Task completion status
-- Space freed
-- Error reporting
-- Performance impact
+2. Check system status:
+   ```bash
+   ./cleanup-system.sh --status
+   ```
 
-## Last Updated: $(date '+%Y-%m-%d %H:%M:%S')
+3. Schedule maintenance:
+   ```bash
+   ./cleanup-system.sh --schedule "0 2 * * *"
+   ```
+
+4. Verify maintenance tasks:
+   ```bash
+   ./cleanup-system.sh --verify
+   ```
