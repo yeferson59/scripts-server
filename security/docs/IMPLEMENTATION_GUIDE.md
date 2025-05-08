@@ -1,164 +1,82 @@
-# Server Security Implementation Guide
+# Security Implementation Guide
 
 ## Overview
-This guide documents the complete security implementation for the server, including monitoring, alerting, and maintenance procedures.
+Step-by-step guide for implementing comprehensive security measures on your server infrastructure.
 
-## Components Implemented
+## Features
+- Automated security hardening
+- Customizable security policies
+- Multi-layer defense implementation
+- Real-time monitoring setup
+- Incident response procedures
+- Compliance frameworks support
+- Audit trail configuration
+- System hardening tools
 
-### 1. Security Monitoring
-- Location: `security/security-monitor.sh`
-- Status: **Active**
-- Features:
-  - System resource monitoring
-  - Failed login detection
-  - File integrity checking
-  - Process monitoring
-  - Network connection monitoring
+## Configuration
+1. Initial Security Setup
+   ```bash
+   # Initialize security configuration
+   ./security/core/secure-server.sh --init
 
-### 2. Alert System
-- Location: `security/notify-enhanced.sh`
-- Status: **Configured**
-- Capabilities:
-  - Email notifications
-  - Log file monitoring
-  - Alert aggregation
+   # Configure basic security policies
+   ./security/core/secure-server.sh --configure basic
 
-### 3. System Hardening
-- SSH Configuration
-- Firewall Rules (UFW)
-- System Logging
-- File Permissions
+   # Setup advanced security measures
+   ./security/core/secure-server.sh --configure advanced
+   ```
 
-## Pending Tasks
+2. Monitoring Configuration
+   ```bash
+   # Configure security monitoring
+   ./security/core/security-monitor.sh --configure
 
-### 1. Alert Configuration
-```bash
-# Configure email notifications
-./security/configure-notifications.sh
+   # Setup alert notifications
+   ./security/configure-notifications.sh --setup
+   ```
 
-# Test notification system
-./security/test-alerts.sh
-```
+3. Firewall Configuration
+   ```bash
+   # Configure firewall rules
+   ./security/firewall/manage-firewall.sh --configure
 
-### 2. Monitoring Thresholds
-Edit `/etc/admin-scripts/notification.conf` to adjust:
-- CPU usage threshold
-- Memory usage threshold
-- Disk space threshold
-- Failed login attempt threshold
+   # Enable intrusion detection
+   ./security/firewall/manage-firewall.sh --enable-ids
+   ```
 
-### 3. Security Maintenance
-Regular tasks to perform:
-```bash
-# Daily
-- Check security logs: /var/log/admin-scripts/security/monitor.log
-- Review failed login attempts
-- Monitor system resources
+## Usage
+1. Security Hardening
+   ```bash
+   # Run initial hardening
+   ./security/core/secure-server.sh --harden
 
-# Weekly
-- Update system packages
-- Review user accounts
-- Check file integrity
-- Test notification system
+   # Verify security measures
+   ./security/core/security-check.sh --verify
+   ```
 
-# Monthly
-- Rotate SSH keys
-- Full security audit
-- Update security policies
-- Test backup restoration
-```
+2. Continuous Monitoring
+   ```bash
+   # Start security monitoring
+   ./security/core/security-monitor.sh --start
 
-## Configuration Files
+   # View security status
+   ./security/core/security-check.sh --status
+   ```
 
-### 1. Main Configuration
-Location: `/etc/admin-scripts/notification.conf`
-```bash
-EMAIL_ENABLED=true
-EMAIL_ADDRESS="your-email@example.com"
-ALERT_LEVEL="WARNING"
-```
+3. Incident Response
+   ```bash
+   # Handle security incidents
+   ./security/emergency-response.sh --incident-type {{type}}
 
-### 2. Logging Configuration
-Location: `/etc/admin-scripts/logging.conf`
-```bash
-LOG_DIR="/var/log/admin-scripts/security"
-LOG_LEVEL="INFO"
-LOG_RETENTION_DAYS=7
-```
+   # Generate incident report
+   ./security/tools/analyze-logs.sh --generate-report
+   ```
 
-## Security Scripts
+4. Regular Maintenance
+   ```bash
+   # Update security measures
+   ./security/core/secure-server.sh --update
 
-### 1. Monitoring Service
-```bash
-# Start monitoring service
-sudo systemctl start security-monitor
-
-# Check status
-sudo systemctl status security-monitor
-
-# View logs
-sudo tail -f /var/log/admin-scripts/security/monitor.log
-```
-
-### 2. Security Checks
-```bash
-# Run manual security check
-sudo ./security/security-check.sh
-
-# Test alert system
-./security/test-alerts.sh
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. Email Alerts Not Sending
-```bash
-# Check Postfix configuration
-sudo postconf -n | grep smtp
-# Verify email settings
-cat /etc/admin-scripts/notification.conf
-# Test email manually
-echo "Test" | mail -s "Test" your-email@example.com
-```
-
-2. Monitoring Service Issues
-```bash
-# Check service status
-sudo systemctl status security-monitor
-# View recent logs
-sudo journalctl -u security-monitor -n 50
-# Restart service
-sudo systemctl restart security-monitor
-```
-
-3. Log File Issues
-```bash
-# Check permissions
-ls -l /var/log/admin-scripts/security/
-# Fix permissions
-sudo chown -R $USER:$USER /var/log/admin-scripts
-# Verify logging
-logger -t security-test "Test log entry"
-```
-
-## Next Steps
-
-1. Complete email notification setup
-2. Configure monitoring thresholds
-3. Set up log rotation
-4. Schedule regular security audits
-5. Document emergency procedures
-
-## Security Contacts
-
-- System Administrator: [Your Contact]
-- Security Team: [Team Contact]
-- Emergency Response: [Emergency Contact]
-
-## Updates
-
-This guide should be reviewed and updated monthly to ensure all security measures remain current and effective.
-
-Last updated: $(date '+%Y-%m-%d')
+   # Audit security configuration
+   ./security/core/security-audit.sh --full
+   ```
