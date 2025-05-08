@@ -1,99 +1,73 @@
-# Server Security Implementation
+# 🛡️ Security Management System
 
-This directory contains security-related scripts and documentation for server hardening and security monitoring.
+## Overview
+Comprehensive security management system for Linux servers, including monitoring, firewall management, and intrusion detection.
 
-## Contents
+## Directory Structure
+```
+security/
+├── core/           # Core security functions
+├── docs/           # Documentation
+├── firewall/       # Firewall management
+└── tools/          # Security utilities
+```
 
-- `docs/SERVER_SECURITY.md`: Comprehensive security configuration guide
-- `secure-server.sh`: Automated security implementation script
-- `security-check.sh`: Security audit and monitoring script
+## Features
+- Automated security monitoring
+- Intrusion detection and prevention
+- Firewall management
+- Security auditing
+- Log analysis
+- Alert system
 
 ## Quick Start
-
-1. Review the security documentation:
-   ```bash
-   less docs/SERVER_SECURITY.md
-   ```
-
-2. Run the security implementation script:
-   ```bash
-   sudo ./secure-server.sh
-   ```
-
-3. Run security checks:
-   ```bash
-   sudo ./security-check.sh
-   ```
-
-## Security Features
-
-- SSH hardening
-- Firewall configuration (UFW)
-- Fail2ban setup
-- System hardening
-- Security monitoring
-- Malware protection
-- Logging and auditing
-
-## Security Maintenance
-
-### Daily Checks
 ```bash
-# Check system logs
-sudo ./security-check.sh --daily
+# Initial security setup
+sudo ./core/secure-server.sh
+
+# Run security audit
+sudo ./core/security-audit.sh
 
 # Monitor security status
-sudo fail2ban-client status
-sudo rkhunter --check
+sudo ./core/security-monitor.sh
 ```
 
-### Weekly Tasks
-```bash
-# Update security tools
-sudo freshclam
-sudo rkhunter --update
+## Tools
+- `analyze-logs.sh`: Security log analysis
+- `manage-firewall.sh`: Firewall management
+- `security-audit.sh`: System security auditing
+- `security-monitor.sh`: Real-time security monitoring
 
-# Full security audit
-sudo ./security-check.sh --full
-```
+## Configuration
+All security tools use configuration files from `../config/`:
+- `config-base.sh`: Base security settings
+- `config-prod.sh`: Production environment settings
+- `config-dev.sh`: Development environment settings
 
-## Alerts and Monitoring
+## Documentation
+- [Server Security Guide](docs/SERVER_SECURITY.md)
+- [Firewall Configuration](docs/FIREWALL_CONFIG.md)
+- [Implementation Guide](IMPLEMENTATION_GUIDE.md)
 
-Security alerts are sent to:
-- System logs: /var/log/admin-scripts/security/
-- Email notifications (if configured)
-- Slack notifications (if configured)
+## Maintenance
+Regular security tasks:
+1. Daily security scans
+2. Log analysis
+3. Firewall rule updates
+4. Security audits
 
 ## Emergency Response
-
 In case of security incidents:
-
-1. Run immediate security check:
-   ```bash
-   sudo ./security-check.sh --emergency
-   ```
-
-2. Review logs:
-   ```bash
-   sudo less /var/log/admin-scripts/security/audit.log
-   ```
-
-3. Follow the incident response procedures in docs/SERVER_SECURITY.md
-
-## Customization
-
-Edit the following files to customize security settings:
-- `config/config-base.sh`: Base security settings
-- `config/config-prod.sh`: Production-specific security settings
-
-## Updates
-
-Keep security tools and configurations up to date:
 ```bash
-# Update security scripts
-git pull origin main
+# Run emergency response
+sudo ./core/emergency-response.sh
 
-# Update security tools
-sudo ./maintenance/update-system.sh --security
+# Analyze security logs
+sudo ./tools/analyze-logs.sh
+
+# Check firewall status
+sudo ./firewall/manage-firewall.sh status
 ```
 
+## Updates
+Last updated: $(date '+%Y-%m-%d %H:%M:%S')
