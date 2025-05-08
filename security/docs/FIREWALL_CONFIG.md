@@ -1,86 +1,59 @@
-# Firewall Configuration Documentation
+# Firewall Configuration Guide
 
-## Current Configuration
+## Overview
+This guide provides comprehensive information about the firewall configuration used in our server security implementation.
 
-### Default Policies
-- Incoming: DENY (default deny all incoming traffic)
-- Outgoing: ALLOW (default allow all outgoing traffic)
+## Features
+- UFW (Uncomplicated Firewall) management
+- Custom rule configurations
+- Rate limiting and attack prevention
+- Service-specific rules
+- Emergency lockdown procedures
 
-### Allowed Services
-- SSH (Port 2222/tcp) - Rate limited
-    - Custom port for security through obscurity
-    - Rate limiting prevents brute force attacks
+## Configuration
+The firewall configuration follows these primary principles:
+1. Default deny all incoming traffic
+2. Allow only necessary services
+3. Rate limit potential attack vectors
+4. Log all denied attempts
 
-### Blocked Services
-1. Common Attack Vectors:
-    - Port 23 (Telnet)
-    - Port 445 (Microsoft-DS)
-    - Port 1433 (SQL Server)
-    - Port 3389 (RDP)
-
-### Blocked Networks
-Known malicious networks blocked:
-- 218.92.0.0/24
-- 176.65.142.0/24
-- 185.164.32.0/24
-
-## Security Measures
-
-1. Rate Limiting
-    - SSH connections are rate-limited to prevent brute force attacks
-    - Helps maintain server availability while preventing abuse
-
-2. Network Blocks
-    - Entire subnets known for malicious activity are blocked
-    - Prevents attacks from known bad actors
-
-## Maintenance
-
-### Adding New Rules
+### Basic Setup
 ```bash
-# Allow new service
-sudo ufw allow <port>/<protocol>
+# Enable UFW
+ufw enable
 
-# Block new network
-sudo ufw deny from <ip_range> to any
+# Set default policies
+ufw default deny incoming
+ufw default allow outgoing
 ```
 
-### Checking Status
+### Standard Rules
 ```bash
-# Show numbered rules
-sudo ufw status numbered
+# Allow SSH (port 22)
+ufw allow ssh
 
-# Show verbose status
-sudo ufw status verbose
+# Allow HTTP/HTTPS
+ufw allow 80/tcp
+ufw allow 443/tcp
 ```
 
-### Backup and Restore
-Backup files location: /etc/ufw/
-- user.rules
-- before.rules
-- after.rules
-- user6.rules
-- before6.rules
-- after6.rules
+## Usage
+1. View current rules:
+    ```bash
+    ./firewall/manage-firewall.sh --list
+    ```
 
-## Emergency Procedures
+2. Add new rule:
+    ```bash
+    ./firewall/manage-firewall.sh --add-rule "allow 8080/tcp"
+    ```
 
-### Temporary Lockdown
-```bash
-# Block all incoming traffic
-sudo ufw default deny incoming
-sudo ufw default deny outgoing
-sudo ufw allow 2222/tcp
-```
+3. Remove rule:
+    ```bash
+    ./firewall/manage-firewall.sh --remove-rule "allow 8080/tcp"
+    ```
 
-### Reset to Safe Defaults
-```bash
-# Reset and reconfigure
-sudo ufw --force reset
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow 2222/tcp
-sudo ufw enable
-```
-
-Last updated: $(date '+%Y-%m-%d %H:%M:%S')
+4. Emergency lockdown:
+    ```bash
+    ./firewall/manage-firewall.sh --lockdown
+    ```
