@@ -33,6 +33,7 @@ Options:
   -h, --help         Show this help message
   --configure        Validate and prepare monitoring configuration
   --remove-config    Remove persisted monitoring configuration
+  --full-stats       Generate full server specs and usage report
   --report           Run checks and print the last report lines
   --service <name>   Check status of a specific service
 EOF
@@ -219,6 +220,130 @@ generate_report() {
     tail -n 20 "${MONITOR_LOG}"
 }
 
+generate_full_stats_report() {
+    local timestamp
+    local report_file
+    local os_name
+    local kernel
+    local arch
+    local hostname_value
+    local uptime_value
+    local cpu_model
+    local cpu_cores
+    local load_avg
+    local mem_total
+    local mem_used
+    local mem_free
+    local swap_total
+    local swap_used
+    local root_disk
+    local ip_addresses
+    local process_count
+    local tcp_listener_count
+    local udp_listener_count
+
+    timestamp="$(date '+%Y%m%d_%H%M%S')"
+    report_file="${LOG_DIR}/system-full-stats-${timestamp}.log"
+
+    mkdir -p "${LOG_DIR}"
+    touch "${report_file}" || { print_message "${LOG_ERROR}" "Cannot create report file: ${report_file}"; return 1; }
+
+    os_name="Unknown"
+    if [[ -f /etc/os-release ]]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release
+        os_name="${PRETTY_NAME:-${NAME:-Unknown}}"
+    fi
+
+    kernel="$(uname -r 2>/dev/null || echo "Unknown")"
+    arch="$(uname -m 2>/dev/null || echo "Unknown")"
+    hostname_value="$(hostname 2>/dev/null || echo "Unknown")"
+    uptime_value="$(uptime -p 2>/dev/null || uptime 2>/dev/null || echo "Unknown")"
+    cpu_model="$(awk -F: '/model name/ {gsub(/^[ \t]+/, "", $2); print $2; exit}' /proc/cpuinfo 2>/dev/null)"
+    [[ -n "${cpu_model}" ]] || cpu_model="$(lscpu 2>/dev/null | awk -F: '/Model name/ {gsub(/^[ \t]+/, "", $2); print $2; exit}')"
+    [[ -n "${cpu_model}" ]] || cpu_model="Unknown"
+    cpu_cores="$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo "Unknown")"
+    load_avg="$(awk '{print $1", "$2", "$3}' /proc/loadavg 2>/dev/null)"
+    [[ -n "${load_avg}" ]] || load_avg="$(uptime 2>/dev/null | awk -F'load average:' '{gsub(/^[ \t]+/, "", $2); print $2}')"
+    [[ -n "${load_avg}" ]] || load_avg="Unknown"
+
+    if command -v free >/dev/null 2>&1; then
+        mem_total="$(free -h | awk '/^Mem:/ {print $2}')"
+        mem_used="$(free -h | awk '/^Mem:/ {print $3}')"
+        mem_free="$(free -h | awk '/^Mem:/ {print $4}')"
+        swap_total="$(free -h | awk '/^Swap:/ {print $2}')"
+        swap_used="$(free -h | awk '/^Swap:/ {print $3}')"
+    else
+        mem_total="$(awk '/MemTotal/ {printf "%.2f GB", $2/1024/1024}' /proc/meminfo 2>/dev/null)"
+        mem_used="N/A"
+        mem_free="N/A"
+        swap_total="$(awk '/SwapTotal/ {printf "%.2f GB", $2/1024/1024}' /proc/meminfo 2>/dev/null)"
+        swap_used="N/A"
+    fi
+
+    root_disk="$(df -h / 2>/dev/null | awk 'NR==2 {print $3" usados / "$2" total ("$5")"}')"
+    [[ -n "${root_disk}" ]] || root_disk="Unknown"
+
+    if command -v hostname >/dev/null 2>&1; then
+        ip_addresses="$(hostname -I 2>/dev/null | xargs)"
+    fi
+    if [[ -z "${ip_addresses}" ]] && command -v ip >/dev/null 2>&1; then
+        ip_addresses="$(ip -o -4 addr show 2>/dev/null | awk '{print $4}' | paste -sd' ' -)"
+    fi
+    [[ -n "${ip_addresses}" ]] || ip_addresses="Unknown"
+
+    process_count="$(ps -e --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+    tcp_listener_count="$(ss -lnt 2>/dev/null | awk 'NR>1' | wc -l | tr -d ' ')"
+    udp_listener_count="$(ss -lnu 2>/dev/null | awk 'NR>1' | wc -l | tr -d ' ')"
+
+    {
+        echo "==== Full Server Statistics Report ===="
+        echo "Generated at: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo
+        echo "== System Specifications =="
+        echo "Hostname: ${hostname_value}"
+        echo "OS: ${os_name}"
+        echo "Kernel: ${kernel}"
+        echo "Architecture: ${arch}"
+        echo "CPU model: ${cpu_model}"
+        echo "CPU cores: ${cpu_cores}"
+        echo "Uptime: ${uptime_value}"
+        echo "IP addresses: ${ip_addresses}"
+        echo
+        echo "== Usage Summary =="
+        echo "Load average: ${load_avg}"
+        echo "Memory: ${mem_used:-N/A} used / ${mem_total:-N/A} total (free: ${mem_free:-N/A})"
+        echo "Swap: ${swap_used:-N/A} used / ${swap_total:-N/A} total"
+        echo "Root disk: ${root_disk}"
+        echo "Processes: ${process_count:-Unknown}"
+        echo "Listening sockets: TCP ${tcp_listener_count:-Unknown}, UDP ${udp_listener_count:-Unknown}"
+        echo
+        echo "== Top CPU Processes =="
+        ps -eo pid,user,comm,%cpu,%mem --sort=-%cpu 2>/dev/null | head -n 8
+        echo
+        echo "== Top Memory Processes =="
+        ps -eo pid,user,comm,%mem,%cpu --sort=-%mem 2>/dev/null | head -n 8
+        echo
+        echo "== Disk Usage by Filesystem =="
+        df -h 2>/dev/null
+        echo
+        echo "== Network Interfaces =="
+        ip -brief address 2>/dev/null || ifconfig 2>/dev/null || echo "No interface tool available"
+        echo
+        echo "== Docker Summary =="
+        if command -v docker >/dev/null 2>&1; then
+            echo "Containers running: $(docker ps -q 2>/dev/null | wc -l | tr -d ' ')"
+            echo "Containers total: $(docker ps -aq 2>/dev/null | wc -l | tr -d ' ')"
+            echo "Images total: $(docker images -q 2>/dev/null | wc -l | tr -d ' ')"
+        else
+            echo "Docker not installed"
+        fi
+    } > "${report_file}"
+
+    cat "${report_file}"
+    print_message "${LOG_INFO}" "Full stats report generated: ${report_file}" | tee -a "${MONITOR_LOG}"
+}
+
 main() {
     case "${1:-}" in
         -h|--help)
@@ -232,6 +357,9 @@ main() {
             ;;
         --report)
             generate_report
+            ;;
+        --full-stats)
+            generate_full_stats_report
             ;;
         --service)
             [[ -n "${2:-}" ]] || { print_message "${LOG_ERROR}" "Missing service name"; return 1; }

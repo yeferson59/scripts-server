@@ -40,6 +40,9 @@ sudo ./monitor-system.sh --remove-config
 # Generate report
 sudo ./monitor-system.sh --report
 
+# Generate full server specifications and usage statistics
+sudo ./monitor-system.sh --full-stats
+
 # Check specific service
 sudo ./monitor-system.sh --service nginx
 ```
@@ -59,6 +62,9 @@ sudo ./monitor-system.sh --service nginx
 - System load
 - Process count
 - Network connections
+- Host specs (OS, kernel, architecture, CPU model, cores)
+- Top CPU/memory processes
+- Docker inventory summary
 
 ## Integration
 - Grafana dashboards
