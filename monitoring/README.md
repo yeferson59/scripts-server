@@ -31,6 +31,12 @@ DISK_WARNING_THRESHOLD=90
 # Start monitoring
 sudo ./monitor-system.sh
 
+# Prepare monitoring configuration
+sudo ./monitor-system.sh --configure
+
+# Remove monitoring configuration
+sudo ./monitor-system.sh --remove-config
+
 # Generate report
 sudo ./monitor-system.sh --report
 

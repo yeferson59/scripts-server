@@ -15,6 +15,7 @@ source "${ROOT_DIR}/config/config-${ENV}.sh"
 
 # Initialize log file
 MONITOR_LOG="${LOG_DIR}/system-monitor.log"
+MONITOR_CONFIG_FILE="/etc/admin-scripts/monitor-system.conf"
 mkdir -p "${LOG_DIR}" 2>/dev/null || true
 if ! touch "${MONITOR_LOG}" 2>/dev/null; then
     MONITOR_LOG="/tmp/system-monitor.log"
@@ -31,6 +32,7 @@ Usage:
 Options:
   -h, --help         Show this help message
   --configure        Validate and prepare monitoring configuration
+  --remove-config    Remove persisted monitoring configuration
   --report           Run checks and print the last report lines
   --service <name>   Check status of a specific service
 EOF
@@ -139,7 +141,34 @@ configure_monitoring() {
     if declare -F validate_config >/dev/null 2>&1; then
         validate_config
     fi
-    print_message "${LOG_INFO}" "Monitoring configuration is ready" | tee -a "${MONITOR_LOG}"
+
+    if mkdir -p "$(dirname "${MONITOR_CONFIG_FILE}")" 2>/dev/null && touch "${MONITOR_CONFIG_FILE}" 2>/dev/null; then
+        cat > "${MONITOR_CONFIG_FILE}" <<EOF
+ENV=${ENV}
+CPU_WARNING_THRESHOLD=${CPU_WARNING_THRESHOLD}
+MEMORY_WARNING_THRESHOLD=${MEMORY_WARNING_THRESHOLD}
+DISK_WARNING_THRESHOLD=${DISK_WARNING_THRESHOLD}
+DOCKER_MONITORING_ENABLED=${DOCKER_MONITORING_ENABLED}
+ALERT_EMAIL=${ALERT_EMAIL}
+ALERT_SLACK_WEBHOOK=${ALERT_SLACK_WEBHOOK}
+EOF
+        print_message "${LOG_INFO}" "Monitoring configuration saved in ${MONITOR_CONFIG_FILE}" | tee -a "${MONITOR_LOG}"
+    else
+        print_message "${LOG_WARNING}" "No permission to persist config in ${MONITOR_CONFIG_FILE}" | tee -a "${MONITOR_LOG}"
+    fi
+}
+
+remove_monitoring_config() {
+    if [[ -f "${MONITOR_CONFIG_FILE}" ]]; then
+        if rm -f "${MONITOR_CONFIG_FILE}"; then
+            print_message "${LOG_INFO}" "Monitoring configuration removed: ${MONITOR_CONFIG_FILE}" | tee -a "${MONITOR_LOG}"
+        else
+            print_message "${LOG_ERROR}" "Failed to remove monitoring configuration: ${MONITOR_CONFIG_FILE}" | tee -a "${MONITOR_LOG}"
+            return 1
+        fi
+    else
+        print_message "${LOG_WARNING}" "No monitoring configuration found at ${MONITOR_CONFIG_FILE}" | tee -a "${MONITOR_LOG}"
+    fi
 }
 
 check_service_status() {
@@ -169,6 +198,9 @@ main() {
             ;;
         --configure)
             configure_monitoring
+            ;;
+        --remove-config)
+            remove_monitoring_config
             ;;
         --report)
             generate_report
