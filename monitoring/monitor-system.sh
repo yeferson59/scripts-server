@@ -38,11 +38,21 @@ Options:
 EOF
 }
 
+is_greater_than() {
+    local left="$1"
+    local right="$2"
+
+    awk -v left="${left}" -v right="${right}" 'BEGIN {
+        if (left == "" || right == "") exit 1
+        exit (left > right) ? 0 : 1
+    }'
+}
+
 # Function to check CPU usage
 check_cpu_usage() {
     local cpu_usage
     cpu_usage=$(top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1}')
-    if (( $(echo "${cpu_usage} > ${CPU_WARNING_THRESHOLD}" | bc -l) )); then
+    if is_greater_than "${cpu_usage}" "${CPU_WARNING_THRESHOLD}"; then
         print_message "${LOG_WARNING}" "High CPU usage: ${cpu_usage}%" >> "${MONITOR_LOG}"
         return 1
     fi
@@ -54,7 +64,7 @@ check_cpu_usage() {
 check_memory_usage() {
     local memory_usage
     memory_usage=$(free | grep Mem | awk '{print $3/$2 * 100.0}')
-    if (( $(echo "${memory_usage} > ${MEMORY_WARNING_THRESHOLD}" | bc -l) )); then
+    if is_greater_than "${memory_usage}" "${MEMORY_WARNING_THRESHOLD}"; then
         print_message "${LOG_WARNING}" "High memory usage: ${memory_usage}%" >> "${MONITOR_LOG}"
         return 1
     fi
