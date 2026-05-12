@@ -49,10 +49,75 @@ is_greater_than() {
     }'
 }
 
-# Function to check CPU usage
+get_cpu_usage_percent() {
+    local cpu user nice system idle iowait irq softirq steal guest guest_nice
+    local total_1 total_2 idle_1 idle_2 diff_total diff_idle
+    local cpu_usage
+
+    if [[ -r /proc/stat ]]; then
+        read -r cpu user nice system idle iowait irq softirq steal guest guest_nice < /proc/stat || return 1
+        total_1=$((user + nice + system + idle + iowait + irq + softirq + steal))
+        idle_1=$((idle + iowait))
+
+        sleep 1
+
+        read -r cpu user nice system idle iowait irq softirq steal guest guest_nice < /proc/stat || return 1
+        total_2=$((user + nice + system + idle + iowait + irq + softirq + steal))
+        idle_2=$((idle + iowait))
+
+        diff_total=$((total_2 - total_1))
+        diff_idle=$((idle_2 - idle_1))
+
+        if (( diff_total <= 0 )); then
+            echo "0"
+            return 0
+        fi
+
+        awk -v total="${diff_total}" -v idle="${diff_idle}" 'BEGIN { printf "%.2f", ((total-idle)/total)*100 }'
+        return 0
+    fi
+
+    cpu_usage="$(top -bn1 2>/dev/null | awk -F'id,' '/Cpu\(s\)/ {gsub(/^[ \t]+/, "", $1); sub(/.*,/, "", $1); print 100-$1; exit}')"
+    [[ -n "${cpu_usage}" ]] || return 1
+    printf "%.2f" "${cpu_usage}"
+}
+
+get_memory_usage_percent() {
+    local mem_total
+    local mem_available
+    local mem_used
+
+    if [[ -r /proc/meminfo ]]; then
+        mem_total="$(awk '/MemTotal/ {print $2; exit}' /proc/meminfo)"
+        mem_available="$(awk '/MemAvailable/ {print $2; exit}' /proc/meminfo)"
+
+        if [[ -z "${mem_available}" ]]; then
+            mem_available="$(awk '/MemFree/ {free=$2} /Buffers/ {buf=$2} /^Cached:/ {cache=$2} END {print free+buf+cache}' /proc/meminfo)"
+        fi
+
+        if [[ -n "${mem_total}" ]] && [[ -n "${mem_available}" ]] && (( mem_total > 0 )); then
+            mem_used=$((mem_total - mem_available))
+            awk -v used="${mem_used}" -v total="${mem_total}" 'BEGIN { printf "%.2f", (used/total)*100 }'
+            return 0
+        fi
+    fi
+
+    if command -v free >/dev/null 2>&1; then
+        free | awk '/^Mem:/ { if ($2 > 0) printf "%.2f", ($3/$2)*100; else print "0" }'
+        return 0
+    fi
+
+    return 1
+}
+
 check_cpu_usage() {
     local cpu_usage
-    cpu_usage=$(top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1}')
+    cpu_usage="$(get_cpu_usage_percent)"
+    [[ -n "${cpu_usage}" ]] || {
+        print_message "${LOG_WARNING}" "Unable to determine CPU usage" >> "${MONITOR_LOG}"
+        return 1
+    }
+
     if is_greater_than "${cpu_usage}" "${CPU_WARNING_THRESHOLD}"; then
         print_message "${LOG_WARNING}" "High CPU usage: ${cpu_usage}%" >> "${MONITOR_LOG}"
         return 1
@@ -64,7 +129,12 @@ check_cpu_usage() {
 # Function to check memory usage
 check_memory_usage() {
     local memory_usage
-    memory_usage=$(free | grep Mem | awk '{print $3/$2 * 100.0}')
+    memory_usage="$(get_memory_usage_percent)"
+    [[ -n "${memory_usage}" ]] || {
+        print_message "${LOG_WARNING}" "Unable to determine memory usage" >> "${MONITOR_LOG}"
+        return 1
+    }
+
     if is_greater_than "${memory_usage}" "${MEMORY_WARNING_THRESHOLD}"; then
         print_message "${LOG_WARNING}" "High memory usage: ${memory_usage}%" >> "${MONITOR_LOG}"
         return 1
@@ -97,14 +167,27 @@ check_docker_containers() {
     fi
 
     local containers
-    containers=$(docker ps -a --format "{{.Names}}: {{.Status}}")
+    local issues=0
+    if ! containers=$(docker ps -a --format "{{.Names}}: {{.Status}}" 2>/dev/null); then
+        print_message "${LOG_WARNING}" "Unable to query Docker daemon" >> "${MONITOR_LOG}"
+        return 1
+    fi
+
+    if [[ -z "${containers}" ]]; then
+        print_message "${LOG_INFO}" "No Docker containers found" >> "${MONITOR_LOG}"
+        return 0
+    fi
+
     while IFS= read -r container; do
         if [[ "${container}" == *"Exited"* || "${container}" == *"Dead"* ]]; then
             print_message "${LOG_WARNING}" "Container issue: ${container}" >> "${MONITOR_LOG}"
+            issues=$((issues + 1))
         else
             print_message "${LOG_INFO}" "Container OK: ${container}" >> "${MONITOR_LOG}"
         fi
     done <<< "${containers}"
+
+    (( issues == 0 ))
 }
 
 # Function to send alerts
@@ -145,6 +228,7 @@ send_alert() {
 
 # Main monitoring cycle
 run_monitoring_cycle() {
+    local send_notifications="${1:-true}"
     print_message "${LOG_INFO}" "Starting system monitoring" >> "${MONITOR_LOG}"
 
     local alerts=0
@@ -156,7 +240,7 @@ run_monitoring_cycle() {
     check_docker_containers || ((alerts++))
 
     # Send alert if any checks failed
-    if ((alerts > 0)); then
+    if ((alerts > 0)) && [[ "${send_notifications}" == "true" ]]; then
         local message="System check failed with ${alerts} alerts. Check ${MONITOR_LOG} for details."
         send_alert "${message}" "WARNING"
     fi
@@ -215,7 +299,7 @@ check_service_status() {
 }
 
 generate_report() {
-    run_monitoring_cycle
+    run_monitoring_cycle false
     echo "Latest monitoring log entries:"
     tail -n 20 "${MONITOR_LOG}"
 }
