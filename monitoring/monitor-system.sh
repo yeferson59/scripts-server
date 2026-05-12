@@ -113,14 +113,32 @@ send_alert() {
 
     # Email alert
     if [[ -n "${ALERT_EMAIL}" ]]; then
-        echo "${message}" | mail -s "System Monitor Alert: ${level}" "${ALERT_EMAIL}"
+        if command -v mail >/dev/null 2>&1; then
+            echo "${message}" | mail -s "System Monitor Alert: ${level}" "${ALERT_EMAIL}"
+        elif command -v mailx >/dev/null 2>&1; then
+            echo "${message}" | mailx -s "System Monitor Alert: ${level}" "${ALERT_EMAIL}"
+        elif command -v sendmail >/dev/null 2>&1; then
+            {
+                echo "Subject: System Monitor Alert: ${level}"
+                echo "To: ${ALERT_EMAIL}"
+                echo
+                echo "${message}"
+            } | sendmail "${ALERT_EMAIL}"
+        else
+            print_message "${LOG_WARNING}" "Email alert skipped: install mail/mailx/sendmail" >> "${MONITOR_LOG}"
+        fi
     fi
 
     # Slack alert
     if [[ -n "${ALERT_SLACK_WEBHOOK}" ]]; then
-        curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"${level}: ${message}\"}" \
-            "${ALERT_SLACK_WEBHOOK}"
+        if command -v curl >/dev/null 2>&1; then
+            curl -sS -X POST -H 'Content-type: application/json' \
+                --data "{\"text\":\"${level}: ${message}\"}" \
+                "${ALERT_SLACK_WEBHOOK}" >/dev/null || \
+                print_message "${LOG_WARNING}" "Slack alert failed to send" >> "${MONITOR_LOG}"
+        else
+            print_message "${LOG_WARNING}" "Slack alert skipped: curl command not found" >> "${MONITOR_LOG}"
+        fi
     fi
 }
 
