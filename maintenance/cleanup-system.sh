@@ -6,15 +6,39 @@
 
 # Determine script directory and load dependencies
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/common.sh"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+source "${ROOT_DIR}/lib/common.sh"
 
 # Load configuration based on environment
 ENV="${ENV:-prod}"  # Default to prod if not set
-source "${SCRIPT_DIR}/config/config-${ENV}.sh"
+source "${ROOT_DIR}/config/config-${ENV}.sh"
 
 # Initialize log file
-readonly CLEANUP_LOG="${LOG_DIR}/system-cleanup.log"
-touch "${CLEANUP_LOG}" 2>/dev/null || { echo "Cannot create log file"; exit 1; }
+CLEANUP_LOG="${LOG_DIR}/system-cleanup.log"
+mkdir -p "${LOG_DIR}" 2>/dev/null || true
+if ! touch "${CLEANUP_LOG}" 2>/dev/null; then
+    CLEANUP_LOG="/tmp/system-cleanup.log"
+    touch "${CLEANUP_LOG}" || { echo "Cannot create log file"; exit 1; }
+fi
+
+show_help() {
+    cat <<'EOF'
+System Cleanup Script
+
+Usage:
+  ./maintenance/cleanup-system.sh [options]
+
+Options:
+  -h, --help                      Show this help message
+  --manual                        Run cleanup immediately (default behavior)
+  --status                        Show cleanup status and disk usage
+  --schedule "<cron_expr>"        Schedule maintenance in crontab
+  --configure-schedule "<expr>"   Alias for --schedule
+  --set-rules <file>              Install cleanup rule file into /etc/admin-scripts
+  --set-retention <days>          Override retention period for this run
+  --verify                        Verify cleanup prerequisites
+EOF
+}
 
 # Function to cleanup system logs
 cleanup_logs() {
@@ -137,7 +161,7 @@ check_disk_space() {
 }
 
 # Main cleanup function
-main() {
+run_cleanup() {
     print_message "${LOG_INFO}" "Starting system cleanup process" >> "${CLEANUP_LOG}"
 
     # Check if running as root
@@ -178,5 +202,89 @@ main() {
     return ${cleanup_failed}
 }
 
-# Run main function
-main
+show_status() {
+    local disk_usage
+    disk_usage="$(df -h / | awk 'NR==2 {print $5}')"
+
+    print_message "${LOG_INFO}" "Cleanup log: ${CLEANUP_LOG}"
+    print_message "${LOG_INFO}" "Retention days: ${BACKUP_RETENTION_DAYS}"
+    print_message "${LOG_INFO}" "Current disk usage: ${disk_usage}"
+
+    if [[ -f "${CLEANUP_LOG}" ]]; then
+        echo "Last cleanup entries:"
+        tail -n 20 "${CLEANUP_LOG}"
+    fi
+}
+
+schedule_maintenance() {
+    check_root
+    local cron_expr="$1"
+    local script_path="${SCRIPT_DIR}/cleanup-system.sh"
+
+    validate_input "${cron_expr}" "cron expression" '.+'
+    (crontab -l 2>/dev/null | grep -v "${script_path}"; echo "${cron_expr} ${script_path} --manual") | crontab -
+    print_message "${LOG_INFO}" "Scheduled maintenance: ${cron_expr}" | tee -a "${CLEANUP_LOG}"
+}
+
+set_cleanup_rules() {
+    check_root
+    local rules_file="$1"
+    local target_dir="/etc/admin-scripts"
+    local target_file="${target_dir}/cleanup.rules"
+
+    [[ -f "${rules_file}" ]] || { print_message "${LOG_ERROR}" "Rules file not found: ${rules_file}"; return 1; }
+    mkdir -p "${target_dir}"
+    cp "${rules_file}" "${target_file}"
+    print_message "${LOG_INFO}" "Cleanup rules installed at ${target_file}" | tee -a "${CLEANUP_LOG}"
+}
+
+verify_cleanup_setup() {
+    local errors=0
+
+    command -v find >/dev/null 2>&1 || { print_message "${LOG_ERROR}" "find command is required"; errors=$((errors + 1)); }
+    command -v df >/dev/null 2>&1 || { print_message "${LOG_ERROR}" "df command is required"; errors=$((errors + 1)); }
+    [[ -d "${LOG_DIR}" ]] || { print_message "${LOG_ERROR}" "Missing log directory: ${LOG_DIR}"; errors=$((errors + 1)); }
+
+    if (( errors == 0 )); then
+        print_message "${LOG_INFO}" "Cleanup verification passed"
+    fi
+
+    return "${errors}"
+}
+
+main() {
+    case "${1:-}" in
+        -h|--help)
+            show_help
+            ;;
+        --manual|"")
+            run_cleanup
+            ;;
+        --status)
+            show_status
+            ;;
+        --schedule|--configure-schedule)
+            [[ -n "${2:-}" ]] || { print_message "${LOG_ERROR}" "Missing cron expression"; return 1; }
+            schedule_maintenance "${2}"
+            ;;
+        --set-rules)
+            [[ -n "${2:-}" ]] || { print_message "${LOG_ERROR}" "Missing rules file path"; return 1; }
+            set_cleanup_rules "${2}"
+            ;;
+        --set-retention)
+            [[ -n "${2:-}" ]] || { print_message "${LOG_ERROR}" "Missing retention days value"; return 1; }
+            BACKUP_RETENTION_DAYS="${2}"
+            print_message "${LOG_INFO}" "Retention updated to ${BACKUP_RETENTION_DAYS} day(s)" | tee -a "${CLEANUP_LOG}"
+            ;;
+        --verify)
+            verify_cleanup_setup
+            ;;
+        *)
+            print_message "${LOG_ERROR}" "Unknown option: ${1}"
+            show_help
+            return 1
+            ;;
+    esac
+}
+
+main "$@"

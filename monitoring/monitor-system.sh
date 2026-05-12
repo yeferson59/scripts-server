@@ -6,15 +6,35 @@
 
 # Determine script directory and load dependencies
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/common.sh"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+source "${ROOT_DIR}/lib/common.sh"
 
 # Load configuration based on environment
 ENV="${ENV:-prod}"  # Default to prod if not set
-source "${SCRIPT_DIR}/config/config-${ENV}.sh"
+source "${ROOT_DIR}/config/config-${ENV}.sh"
 
 # Initialize log file
-readonly MONITOR_LOG="${LOG_DIR}/system-monitor.log"
-touch "${MONITOR_LOG}" 2>/dev/null || { echo "Cannot create log file"; exit 1; }
+MONITOR_LOG="${LOG_DIR}/system-monitor.log"
+mkdir -p "${LOG_DIR}" 2>/dev/null || true
+if ! touch "${MONITOR_LOG}" 2>/dev/null; then
+    MONITOR_LOG="/tmp/system-monitor.log"
+    touch "${MONITOR_LOG}" || { echo "Cannot create log file"; exit 1; }
+fi
+
+show_help() {
+    cat <<'EOF'
+System Monitoring Script
+
+Usage:
+  ./monitoring/monitor-system.sh [options]
+
+Options:
+  -h, --help         Show this help message
+  --configure        Validate and prepare monitoring configuration
+  --report           Run checks and print the last report lines
+  --service <name>   Check status of a specific service
+EOF
+}
 
 # Function to check CPU usage
 check_cpu_usage() {
@@ -92,8 +112,8 @@ send_alert() {
     fi
 }
 
-# Main monitoring loop
-main() {
+# Main monitoring cycle
+run_monitoring_cycle() {
     print_message "${LOG_INFO}" "Starting system monitoring" >> "${MONITOR_LOG}"
 
     local alerts=0
@@ -113,5 +133,59 @@ main() {
     print_message "${LOG_INFO}" "Monitoring cycle completed with ${alerts} alerts" >> "${MONITOR_LOG}"
 }
 
-# Run main function
-main
+configure_monitoring() {
+    mkdir -p "${LOG_DIR}"
+    touch "${MONITOR_LOG}"
+    if declare -F validate_config >/dev/null 2>&1; then
+        validate_config
+    fi
+    print_message "${LOG_INFO}" "Monitoring configuration is ready" | tee -a "${MONITOR_LOG}"
+}
+
+check_service_status() {
+    local service_name="$1"
+    validate_input "${service_name}" "service name" '^[a-zA-Z0-9_.@-]+$'
+
+    local status="unknown"
+    if command -v systemctl >/dev/null 2>&1; then
+        status="$(systemctl is-active "${service_name}" 2>/dev/null || true)"
+    elif command -v service >/dev/null 2>&1; then
+        status="$(service "${service_name}" status 2>/dev/null | head -n 1 || true)"
+    fi
+
+    print_message "${LOG_INFO}" "Service ${service_name}: ${status}" | tee -a "${MONITOR_LOG}"
+}
+
+generate_report() {
+    run_monitoring_cycle
+    echo "Latest monitoring log entries:"
+    tail -n 20 "${MONITOR_LOG}"
+}
+
+main() {
+    case "${1:-}" in
+        -h|--help)
+            show_help
+            ;;
+        --configure)
+            configure_monitoring
+            ;;
+        --report)
+            generate_report
+            ;;
+        --service)
+            [[ -n "${2:-}" ]] || { print_message "${LOG_ERROR}" "Missing service name"; return 1; }
+            check_service_status "${2}"
+            ;;
+        "")
+            run_monitoring_cycle
+            ;;
+        *)
+            print_message "${LOG_ERROR}" "Unknown option: ${1}"
+            show_help
+            return 1
+            ;;
+    esac
+}
+
+main "$@"

@@ -18,28 +18,28 @@ log_message "Starting daily security scan"
 
 # Update security tools
 log_message "Updating security tools"
-freshclam &>> "${SCAN_LOG}"
-rkhunter --update &>> "${SCAN_LOG}"
+freshclam >> "${SCAN_LOG}" 2>&1
+rkhunter --update >> "${SCAN_LOG}" 2>&1
 
 # Run rootkit scan
 log_message "Running rootkit scan"
-rkhunter --check --skip-keypress --report-warnings-only &>> "${SCAN_LOG}"
+rkhunter --check --skip-keypress --report-warnings-only >> "${SCAN_LOG}" 2>&1
 
 # Run antivirus scan
 log_message "Running antivirus scan"
-clamscan --recursive --infected /etc /bin /sbin /usr/bin /usr/sbin &>> "${SCAN_LOG}"
+clamscan --recursive --infected /etc /bin /sbin /usr/bin /usr/sbin >> "${SCAN_LOG}" 2>&1
 
 # Check for failed login attempts
 log_message "Checking authentication failures"
-grep "Failed password" /var/log/auth.log | tail -n 10 &>> "${SCAN_LOG}"
+grep "Failed password" /var/log/auth.log | tail -n 10 >> "${SCAN_LOG}" 2>&1
 
 # Check listening ports
 log_message "Checking network ports"
-ss -tulpn &>> "${SCAN_LOG}"
+ss -tulpn >> "${SCAN_LOG}" 2>&1
 
 # Check disk usage
 log_message "Checking disk usage"
-df -h &>> "${SCAN_LOG}"
+df -h >> "${SCAN_LOG}" 2>&1
 
 # Send report if there are any warnings
 if grep -iE 'warning|error|fail|unsafe|invalid' "${SCAN_LOG}"; then

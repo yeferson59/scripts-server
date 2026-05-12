@@ -6,18 +6,37 @@
 
 # Determine script directory and load dependencies
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/common.sh"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+source "${ROOT_DIR}/lib/common.sh"
 
 # Load configuration based on environment
 ENV="${ENV:-prod}"  # Default to prod if not set
-source "${SCRIPT_DIR}/config/config-${ENV}.sh"
+source "${ROOT_DIR}/config/config-${ENV}.sh"
 
 # Initialize log file
-readonly SECURITY_LOG="${LOG_DIR}/security-check.log"
-touch "${SECURITY_LOG}" 2>/dev/null || { echo "Cannot create log file"; exit 1; }
+SECURITY_LOG="${LOG_DIR}/security-check.log"
+mkdir -p "${LOG_DIR}" 2>/dev/null || true
+if ! touch "${SECURITY_LOG}" 2>/dev/null; then
+    SECURITY_LOG="/tmp/security-check.log"
+    touch "${SECURITY_LOG}" || { echo "Cannot create log file"; exit 1; }
+fi
 
 # File integrity database
 readonly INTEGRITY_DB="${SCRIPT_DIR}/data/file_hashes.db"
+
+show_help() {
+    cat <<'EOF'
+Security Check Script
+
+Usage:
+  ./security/core/security-check.sh [options]
+
+Options:
+  -h, --help     Show this help message
+  --verify       Run full security verification (default behavior)
+  --status       Show latest security check status
+EOF
+}
 
 # Function to check for rootkits
 check_rootkits() {
@@ -180,7 +199,7 @@ check_permissions() {
 }
 
 # Main security check function
-main() {
+run_security_checks() {
     print_message "${LOG_INFO}" "Starting security check process" >> "${SECURITY_LOG}"
 
     # Check if running as root
@@ -206,5 +225,36 @@ main() {
     return ${check_failed}
 }
 
-# Run main function
-main
+show_status() {
+    if [[ -f "${SECURITY_LOG}" ]]; then
+        echo "Latest security checks:"
+        tail -n 20 "${SECURITY_LOG}"
+    else
+        print_message "${LOG_WARNING}" "Security log not found: ${SECURITY_LOG}"
+    fi
+
+    if [[ -f "${INTEGRITY_DB}" ]]; then
+        print_message "${LOG_INFO}" "Integrity database entries: $(wc -l < "${INTEGRITY_DB}")"
+    fi
+}
+
+main() {
+    case "${1:-}" in
+        -h|--help)
+            show_help
+            ;;
+        --verify|"")
+            run_security_checks
+            ;;
+        --status)
+            show_status
+            ;;
+        *)
+            print_message "${LOG_ERROR}" "Unknown option: ${1}"
+            show_help
+            return 1
+            ;;
+    esac
+}
+
+main "$@"
