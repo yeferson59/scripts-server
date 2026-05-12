@@ -33,12 +33,31 @@ User account management scripts for handling user creation, permissions, and acc
    ./create-user.sh --create username
    ```
 
-2. Modify permissions:
+2. List users:
+   ```bash
+   ./create-user.sh --list-users
+   ```
+
+3. View user permissions:
+   ```bash
+   ./create-user.sh --view-perms username
+   ```
+
+4. Modify permissions:
    ```bash
    ./create-user.sh --modify-perms username
    ```
 
-3. Manage SSH keys:
+   Non-interactive examples:
+   ```bash
+   ./create-user.sh --modify-perms username --show
+   ./create-user.sh --modify-perms username --grant-admin
+   ./create-user.sh --modify-perms username --revoke-admin
+   ./create-user.sh --modify-perms username --add-group docker
+   ./create-user.sh --modify-perms username --remove-group docker
+   ```
+
+5. Manage SSH keys:
    ```bash
    ./create-user.sh --manage-ssh username
    ```
